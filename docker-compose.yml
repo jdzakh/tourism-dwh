@@ -1,0 +1,36 @@
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-tourism}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tourism}
+      POSTGRES_DB: ${POSTGRES_DB:-tourism_dwh}
+    ports:
+      - "${PG_HOST_PORT:-5433}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./sql:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${APP_PORT:-8501}:8501"
+    environment:
+      PG_HOST: postgres
+      PG_PORT: 5432
+      PG_DB: ${POSTGRES_DB:-tourism_dwh}
+      PG_USER: ${POSTGRES_USER:-tourism}
+      PG_PASSWORD: ${POSTGRES_PASSWORD:-tourism}
+
+volumes:
+  pgdata:
